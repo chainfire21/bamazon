@@ -59,7 +59,7 @@ function readProducts() {
     connection.query(`SELECT departments.department_name, departments.over_head_costs, SUM(products.product_sales) as product_sales, 
             departments.over_head_costs-SUM(products.product_sales) as total_profit 
             FROM departments 
-                INNER JOIN products on departments.department_name = products.department_name
+                LEFT JOIN products on departments.department_name = products.department_name
                 group by department_name`, 
             function (err, res) {
         if (err) throw err;
