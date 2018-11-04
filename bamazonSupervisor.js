@@ -16,7 +16,7 @@ connection.connect(function (err) {
         throw ('error connecting: ' + err.stack);
     }
     console.log("");
-    readProducts();
+    start();
 });
 
 function start() {
@@ -29,147 +29,56 @@ function start() {
         },
         {
             type: "input",
-            name: "addId",
-            message: "What is the id of the product?",
-            when: function (answers) {
-                return answers.choice === "Add to Inventory";
-            },
-            validate: function (value) {
-                const pass = value.match(/^([1-9][0-9]?)$/);
-                if (pass) {
-                    return true;
-                }
-                return "Please select a valid ID";
-            }
-        },
-        {
-            type: "input",
-            name: "addInv",
-            message: "How many of the product are you adding?",
-            when: function (answers) {
-                return answers.choice === "Add to Inventory";
-            }
-        },
-        {
-            type: "input",
             name: "newName",
-            message: "What is the name of the product?",
+            message: "Department name?",
             when: function (answers) {
-                return answers.choice === "Add New Product";
-            }
-        },
-        {
-            type: "input",
-            name: "newDept",
-            message: "What is the department of the product?",
-            when: function (answers) {
-                return answers.choice === "Add New Product";
+                return answers.choice === "Create New Department";
             }
         },
         {
             type: "input",
             name: "newPrice",
-            message: "What is the price of the product?",
+            message: "What was the over head cost?",
             when: function (answers) {
-                return answers.choice === "Add New Product";
-            }
-        },
-        {
-            type: "input",
-            name: "newStock",
-            message: "How much of the product is in stock?",
-            when: function (answers) {
-                return answers.choice === "Add New Product";
+                return answers.choice === "Create New Department";
             }
         },
     ]).then((ans) => {
         switch (ans.choice) {
-            case "View Products for Sale":
+            case "View Product Sales by Department":
                 readProducts();
                 break;
-            case "View Low Inventory":
-                viewLow();
-                break;
-            case "Add to Inventory":
-                checkAdd(ans.addId);
-                connection.query(
-                    "SELECT * FROM products WHERE ?",
-                    {
-                        item_id: parseInt(ans.addId)
-                    },
-                    function (err, res) {
-                        if (err) throw err;
-                        updateProduct(res[0].stock_quantity + parseInt(ans.addInv), parseInt(ans.addId));
-
-                    }
-                );
-                break;
-            case "Add New Product":
-                createProduct(ans.newName,ans.newDept,parseInt(ans.newPrice),parseInt(ans.newStock));
+            case "Create New Department":
+                newDept(ans.newName, ans.newPrice);
                 break;
         }
     });
-}
-
-function checkAdd(num){
-    connection.query("SELECT * FROM products", function (err, res) {
-        if (err) throw err;
-        if(num>res.length){
-            console.log("Please select a valid ID");
-            return start();
-        }
-    });
-}
-
-function updateProduct(toSet, whatId) {
-    connection.query(
-        "UPDATE products SET ? WHERE ?",
-        [
-            {
-                stock_quantity: toSet
-            },
-            {
-                item_id: whatId
-            }
-        ],
-        function (err, res) {
-            if (err) throw err;
-            console.log("Added stock!");
-            reset();
-        }
-    );
 }
 
 function readProducts() {
-    connection.query("SELECT * FROM products", function (err, res) {
+    connection.query(`SELECT departments.department_name, departments.over_head_costs, SUM(products.product_sales) as product_sales, 
+            departments.over_head_costs-SUM(products.product_sales) as total_profit 
+            FROM departments 
+                INNER JOIN products on departments.department_name = products.department_name
+                group by department_name`, 
+            function (err, res) {
         if (err) throw err;
+        console.log("");
         console.table(res);
+        connection.end(err=>{if (err) throw err});
         start();
     });
 }
 
-function viewLow() {
+function newDept(name, cost) {
     connection.query(
-        "SELECT * FROM products WHERE stock_quantity < 5", function (err, res) {
-            if (err) throw err;
-            console.table(res);
-            reset();
-        }
-    );
-}
-
-function createProduct(name, dept, price, stock) {
-    connection.query(
-        "INSERT INTO products SET ?",{
-            product_name: name,
-            department_name: dept,
-            price: price,
-            stock_quantity: stock,
-            product_sales: 0,
+        "INSERT INTO departments SET ?",{
+            department_name: name,
+            over_head_costs: cost,
         },
         function (err, res) {
             if(err) throw err;
-            console.log("New product made!\n");
+            console.log("New department made!\n");
             reset();
         }
     );
@@ -190,7 +99,6 @@ function reset() {
 }
 
 function end() {
-    connection.end(function (err) {
-        console.log("BYE");
-    });
+    console.log("BYE");
+    connection.destory();
 }

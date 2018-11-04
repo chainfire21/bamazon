@@ -23,7 +23,6 @@ function readProducts() {
     connection.query("SELECT item_id,product_name,department_name,price FROM products", function (err, res) {
         if (err) throw err;
         console.table(res);
-        regex = new RegExp(`^([1-9]|${res.length})$`);
         start();
     });
 }
@@ -35,7 +34,7 @@ function start() {
             name: "buy",
             message: "Input the ID of what you would like to buy",
             validate: function (value) {
-                const pass = value.match(regex);
+                const pass = value.match(/^([1-9][0-9]?)$/);
                 if (pass) {
                     return true;
                 }
@@ -48,18 +47,30 @@ function start() {
             message: "How many?"
         }
     ]).then((ans) => {
+        buyProduct(parseInt(ans.buy), parseInt(ans.amt));
+    });
+}
+
+function buyProduct(buy, amt) {
+    connection.query("SELECT * FROM products", function (err, res) {
+        if (err) throw err;
+        if (buy > res.length) {
+            console.log("Please select a valid ID");
+            return start();
+        }
+        else
         connection.query(
             "SELECT * FROM products WHERE ?",
             {
-                item_id: parseInt(ans.buy)
+                item_id: buy
             },
             function (err, res) {
                 if (err) throw err;
-                if (parseInt(res[0].stock_quantity) < parseInt(ans.amt)) {
+                if (parseInt(res[0].stock_quantity) < amt) {
                     console.log("Insufficient quantity!");
                     return readProducts();
                 }
-                updateProduct(res[0].stock_quantity - parseInt(ans.amt), parseInt(ans.buy), res[0].price * parseInt(ans.amt)+res[0].product_sales);
+                updateProduct(res[0].stock_quantity - amt, buy, res[0].price * amt + res[0].product_sales);
 
             }
         );
@@ -73,15 +84,15 @@ function end() {
 }
 
 function updateProduct(toSet, whatId, cost) {
-    connection.query("UPDATE products SET ? WHERE ?",[
-            {
-                stock_quantity: toSet,
-                product_sales: cost
-            },
-            {
-                item_id: whatId
-            },
-        ],
+    connection.query("UPDATE products SET ? WHERE ?", [
+        {
+            stock_quantity: toSet,
+            product_sales: cost
+        },
+        {
+            item_id: whatId
+        },
+    ],
         function (err, res) {
             if (err) throw err;
             console.log("\n" + cost + " dollars is how much you spent!\n");
