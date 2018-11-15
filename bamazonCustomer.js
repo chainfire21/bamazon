@@ -20,7 +20,7 @@ connection.connect(function (err) {
 });
 
 function readProducts() {
-    connection.query("SELECT item_id,product_name,department_name,price FROM products", function (err, res) {
+    connection.query("SELECT item_id,product_name,department_name,price,stock_quantity FROM products", function (err, res) {
         if (err) throw err;
         console.table(res);
         start();
@@ -67,10 +67,10 @@ function buyProduct(buy, amt) {
             function (err, res) {
                 if (err) throw err;
                 if (parseInt(res[0].stock_quantity) < amt) {
-                    console.log("Insufficient quantity!");
+                    console.log("\nInsufficient quantity!\n");
                     return readProducts();
                 }
-                updateProduct(res[0].stock_quantity - amt, buy, res[0].price * amt + res[0].product_sales);
+                updateProduct(res[0].stock_quantity - amt, buy, res[0].price * amt,res[0].price * amt+res[0].product_sales);
 
             }
         );
@@ -83,11 +83,11 @@ function end() {
     });
 }
 
-function updateProduct(toSet, whatId, cost) {
+function updateProduct(toSet, whatId, cost, prodSales) {
     connection.query("UPDATE products SET ? WHERE ?", [
         {
             stock_quantity: toSet,
-            product_sales: cost
+            product_sales: prodSales
         },
         {
             item_id: whatId
